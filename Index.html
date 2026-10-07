@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Online Thật Sự</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #eef2f5;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 480px;
+            height: 650px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Màn hình Đăng nhập */
+        #login-screen {
+            padding: 30px 25px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+        }
+
+        #login-screen h2 {
+            margin-bottom: 8px;
+            color: #1a1a1a;
+        }
+
+        #login-screen p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .input-group {
+            width: 100%;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid #e1e4e8;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #0084ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #0084ff;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #0073e6;
+        }
+
+        /* Màn hình Chat */
+        #chat-screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            padding: 12px 16px;
+            background: #0084ff;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header .info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .chat-header .title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-header h3 {
+            font-size: 1.05rem;
+            max-width: 220px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn-rename {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin-top: 0;
+            width: auto;
+        }
+
+        .btn-rename:hover {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .user-badge {
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .status-bar {
+            background: #e1f5fe;
+            color: #0288d1;
+            font-size: 0.75rem;
+            padding: 5px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .clear-btn {
+            color: #d32f2f;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.75rem;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .message.received {
+            align-self: flex-start;
+            background: #ffffff;
+            color: #212529;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 2px;
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            background: #0084ff;
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message .meta {
+            font-size: 0.75rem;
+            margin-bottom: 2px;
+            font-weight: 700;
+            color: #ff5722;
+        }
+
+        .message .time {
+            font-size: 0.65rem;
+            margin-top: 4px;
+            opacity: 0.7;
+            text-align: right;
+        }
+
+        .system-message {
+            align-self: center;
+            font-size: 0.75rem;
+            color: #666;
+            background: #e9ecef;
+            padding: 3px 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .chat-input-area {
+            padding: 12px;
+            background: #ffffff;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+        }
+
+        .chat-input-area button {
+            width: auto;
+            padding: 0 18px;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <!-- Màn hình Đăng nhập -->
+        <div id="login-screen">
+            <h2>Chat Nhóm Online</h2>
+            <p>Nhập tên và mã phòng để tham gia</p>
+            
+            <div class="input-group">
+                <label for="username-input">Tên người dùng:</label>
+                <input type="text" id="username-input" placeholder="Nhập tên của bạn..." maxlength="20" autofocus>
+            </div>
+
+            <div class="input-group">
+                <label for="room-input">Mã phòng chat:</label>
+                <input type="text" id="room-input" value="bangsad-36" placeholder="Nhập mã phòng...">
+            </div>
+
+            <button id="join-btn">Vào Phòng Chat</button>
+        </div>
+
+        <!-- Màn hình Chat -->
+        <div id="chat-screen">
+            <div class="chat-header">
+                <div class="info">
+                    <div class="title-row">
+                        <h3 id="room-title">Phòng Chat</h3>
+                        <button class="btn-rename" id="rename-group-btn">✏️ Đổi tên nhóm</button>
+                    </div>
+                    <span id="connection-status" style="font-size: 0.75rem; opacity: 0.9;">Đang kết nối...</span>
+                </div>
+                <span class="user-badge" id="current-user-display"></span>
+            </div>
+
+            <div class="status-bar">
+                <span id="status-text">⚡ Đang kết nối...</span>
+                <span class="clear-btn" id="clear-history-btn" title="Xóa lịch sử trên máy này">Xóa lịch sử</span>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages"></div>
+
+            <div class="chat-input-area">
+                <input type="text" id="message-input" placeholder="Nhập tin nhắn..." autocomplete="off">
+                <button id="send-btn">Gửi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const loginScreen = document.getElementById('login-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const usernameInput = document.getElementById('username-input');
+        const roomInput = document.getElementById('room-input');
+        const joinBtn = document.getElementById('join-btn');
+        const currentUserDisplay = document.getElementById('current-user-display');
+        const roomTitle = document.getElementById('room-title');
+        const renameGroupBtn = document.getElementById('rename-group-btn');
+        const connectionStatus = document.getElementById('connection-status');
+        const statusText = document.getElementById('status-text');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const chatMessages = document.getElementById('chat-messages');
+
+        let currentUser = '';
+        let currentRoom = '';
+        let currentGroupName = '';
+        let mqttClient = null;
+        let myClientId = 'user_' + Math.random().toString(36).substring(2, 9);
+
+        function getStorageKey() {
+            return `chat_history_${currentRoom}`;
+        }
+
+        function getGroupTitleKey() {
+            return `group_title_${currentRoom}`;
+        }
+
+        function loadChatHistory() {
+            chatMessages.innerHTML = '';
+            const history = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
+            history.forEach(item => {
+                if (item.type === 'system') {
+                    renderSystemMessage(item.text);
+                } else if (item.type === 'user') {
+                    const isMyMessage = item.clientId === myClientId || item.sender === currentUser;
+                    renderMessage(item, isMyMessage);
+                }
+            });
+        }
+
+        function saveToHistory(msgObj) {
+            const history = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
+            history.push(msgObj);
+            localStorage.setItem(getStorageKey(), JSON.stringify(history));
+        }
+
+        function joinChat() {
+            const username = usernameInput.value.trim();
+            const room = roomInput.value.trim() || 'bangsad-36';
+
+            if (!username) {
+                alert('Vui lòng nhập tên người dùng!');
+                return;
+            }
+
+            currentUser = username;
+            currentRoom = room;
+            currentGroupName = localStorage.getItem(getGroupTitleKey()) || `Phòng: ${currentRoom}`;
+
+            currentUserDisplay.textContent = currentUser;
+            roomTitle.textContent = currentGroupName;
+
+            loginScreen.style.display = 'none';
+            chatScreen.style.display = 'flex';
+
+            loadChatHistory();
+            connectToMqttServer();
+        }
+
+        function connectToMqttServer() {
+            const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+            
+            mqttClient = mqtt.connect(brokerUrl, {
+                clientId: myClientId,
+                clean: true,
+                connectTimeout: 4000,
+                reconnectPeriod: 1000,
+            });
+
+            const topic = `chat_online_room_${currentRoom}`;
+
+            mqttClient.on('connect', () => {
+                connectionStatus.textContent = '🟢 Đã kết nối';
+                statusText.textContent = `✅ Đã kết nối phòng "${currentRoom}"`;
+
+                mqttClient.subscribe(topic, (err) => {
+                    if (!err) {
+                        const joinMsg = {
+                            type: 'system',
+                            text: `${currentUser} đã vào phòng chat.`,
+                            clientId: myClientId
+                        };
+                        mqttClient.publish(topic, JSON.stringify(joinMsg));
+                    }
+                });
+            });
+
+            mqttClient.on('message', (receivedTopic, message) => {
+                try {
+                    const data = JSON.parse(message.toString());
+                    
+                    if (data.type === 'rename') {
+                        currentGroupName = data.newName;
+                        roomTitle.textContent = currentGroupName;
+                        localStorage.setItem(getGroupTitleKey(), currentGroupName);
+                        
+                        const sysText = `${data.sender} đã đổi tên nhóm thành "${data.newName}"`;
+                        renderSystemMessage(sysText);
+                        saveToHistory({ type: 'system', text: sysText });
+                    } else if (data.type === 'system') {
+                        renderSystemMessage(data.text);
+                        saveToHistory(data);
+                    } else if (data.type === 'user') {
+                        const isMyMessage = data.clientId === myClientId;
+                        renderMessage(data, isMyMessage);
+                        saveToHistory(data);
+                    }
+                } catch (e) {
+                    console.error("Lỗi đọc tin nhắn:", e);
+                }
+            });
+
+            mqttClient.on('error', () => {
+                connectionStatus.textContent = '🔴 Lỗi kết nối';
+                statusText.textContent = '❌ Không thể kết nối server. Đang thử lại...';
+            });
+        }
+
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !mqttClient) return;
+
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const topic = `chat_online_room_${currentRoom}`;
+
+            const msgData = {
+                type: 'user',
+                sender: currentUser,
+                text: text,
+                time: time,
+                clientId: myClientId
+            };
+
+            mqttClient.publish(topic, JSON.stringify(msgData));
+
+            messageInput.value = '';
+            messageInput.focus();
+        }
+
+        function changeGroupName() {
+            const newName = prompt('Nhập tên nhóm mới:', currentGroupName);
+            if (!newName || !newName.trim() || newName === currentGroupName) return;
+
+            const trimmedName = newName.trim();
+            const topic = `chat_online_room_${currentRoom}`;
+
+            const renameData = {
+                type: 'rename',
+                newName: trimmedName,
+                sender: currentUser
+            };
+
+            mqttClient.publish(topic, JSON.stringify(renameData));
+        }
+
+        function renderMessage(data, isSent) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', isSent ? 'sent' : 'received');
+
+            if (!isSent) {
+                const metaDiv = document.createElement('div');
+                metaDiv.classList.add('meta');
+                metaDiv.textContent = data.sender;
+                msgDiv.appendChild(metaDiv);
+            }
+
+            const textDiv = document.createElement('div');
+            textDiv.textContent = data.text;
+            msgDiv.appendChild(textDiv);
+
+            const timeDiv = document.createElement('div');
+            timeDiv.classList.add('time');
+            timeDiv.textContent = data.time;
+            msgDiv.appendChild(timeDiv);
+
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function renderSystemMessage(text) {
+            const sysDiv = document.createElement('div');
+            sysDiv.classList.add('system-message');
+            sysDiv.textContent = text;
+            chatMessages.appendChild(sysDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        joinBtn.addEventListener('click', joinChat);
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinChat();
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        renameGroupBtn.addEventListener('click', changeGroupName);
+
+        clearHistoryBtn.addEventListener('click', () => {
+            if (confirm('Bạn có chắc muốn xóa lịch sử chat của phòng này trên máy này?')) {
+                localStorage.removeItem(getStorageKey());
+                chatMessages.innerHTML = '';
+                renderSystemMessage('Đã xóa lịch sử chat.');
+            }
+        });
+    </script>
+</body>
+</html>
