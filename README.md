@@ -1,2 +1,0 @@
-# Sadchat
-Sad vào chat
